@@ -1,0 +1,25 @@
+{
+  "name": "forecastory_contract",
+  "version": "0.1.0",
+  "description": "",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "author": "@kohshiba",
+  "license": "GPL-3.0",
+  "dependencies": {},
+  "devDependencies": {
+    "@openzeppelin/test-helpers": "^0.5.6",
+    "@truffle/hdwallet-provider": "^1.0.35",
+    "chai": "^4.2.0",
+    "fs": "0.0.1-security",
+    "ganache-cli": "^6.10.1",
+    "mocha": "^8.1.1",
+    "truffle": "^5.1.37",
+    "truffle-contract-size": "^2.0.0"
+  },
+  "scripts": {
+    "test": "mocha"
+  }
+}
