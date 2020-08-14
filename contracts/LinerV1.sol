@@ -89,7 +89,6 @@ contract LinerV1 is ERC1155, IMarket {
     IERC20 public token;
     address[] public beneficiaries;
     uint256[] public shares;
-    string public detail;
 
     /**
      * OUTCOMES
@@ -159,23 +158,22 @@ contract LinerV1 is ERC1155, IMarket {
      * conditions[2] = buySlopeNum
      * conditions[3] = sell option (0:yes 1:no)
      * conditions[4] = minimum investment value
-     * beneficiaries[] = beneficiary addresses collect fees
-     * shares[] = fee shares
      * references[0] = ERC20 token used as the collateral
      * references[1] = oracle address settles the market
+     * beneficiaries[] = beneficiary addresses collect fees
+     * shares[] = fee shares
      * detail = any additiona info about the market
      */
     function validate(
-        string memory _question,
-        bytes32[] memory _outcomes,
+        string memory _settings,
+        uint256 _outcomeNum,
         uint256[] memory _conditions,
         address[] memory _references,
         address[] memory _beneficiaries,
-        uint256[] memory _shares,
-        string memory _detail
+        uint256[] memory _shares
     ) public override view returns (bool) {
-        require(bytes(_question).length > 0);
-        require(_outcomes.length >= 2);
+        require(bytes(_settings).length > 10);
+        require(_outcomeNum >= 2);
         require(
             _conditions[1].sub(_conditions[0]) > 1 days &&
                 _conditions[1].sub(now) > 1 days
@@ -184,12 +182,11 @@ contract LinerV1 is ERC1155, IMarket {
         require(_conditions[3] < 2);
         require(_references[0] != address(0) && _references[1] != address(0));
         require(_beneficiaries.length == _shares.length);
-        require(bytes(_detail).length > 0);
 
         uint256 share;
         for (uint256 i = 0; i < _shares.length; i++)
             share = share.add(_shares[i]);
-        require(50000 > share);
+        require(GLOBAL_DENOMINATOR > share);
 
         return true;
     }
@@ -200,30 +197,27 @@ contract LinerV1 is ERC1155, IMarket {
      * arguments are verified by the 'validate' function.
      */
     function initialize(
-        string memory _question,
-        bytes32[] memory _outcomes,
+        string memory _settings,
+        uint256 _outcomeNum,
         uint256[] memory _conditions,
         address[] memory _references,
         address[] memory _beneficiaries,
-        uint256[] memory _shares,
-        string memory _detail
+        uint256[] memory _shares
     ) public override returns (bool) {
         require(
             validate(
-                _question,
-                _outcomes,
+                _settings,
+                _outcomeNum,
                 _conditions,
                 _references,
                 _beneficiaries,
-                _shares,
-                _detail
+                _shares
             )
         );
 
         require(initialized == false);
         initialized = true;
-        outcomeNumbers = _outcomes.length;
-        hashID = keccak256(abi.encodePacked(_question, _outcomes));
+        outcomeNumbers = _outcomeNum;
         startTime = _conditions[0];
         endTime = _conditions[1];
         buySlopeNum = _conditions[2];
@@ -237,9 +231,18 @@ contract LinerV1 is ERC1155, IMarket {
         oracle = _references[1];
         beneficiaries = _beneficiaries;
         shares = _shares;
-        detail = _detail;
-
         factory = msg.sender;
+
+        hashID = keccak256(
+            abi.encodePacked(
+                _settings,
+                _outcomeNum,
+                _conditions,
+                _references,
+                _beneficiaries,
+                _shares
+            )
+        );
 
         marketStatus = MarketStatus.BeforeTrading;
         return true;
@@ -248,84 +251,102 @@ contract LinerV1 is ERC1155, IMarket {
     /**
      * @dev Buy
      * Market participants can buy option tokens through this function.
+     * _params[0] investmentAmount,
+     * _params[1] minTokensBought,
+     * _params[2] outcomeIndex,
+     * _params[3] fee,
+     * _addresses[0] beneficiary,
+     * _addresses[1] owner,
+     * _addresses[2] to
      */
-    function buy(
-        uint256 investmentAmount,
-        uint256 minTokensBought,
-        uint256 outcomeIndex,
-        address owner,
-        address to
-    ) public marketStatusTransitions atMarketStatus(MarketStatus.Trading) {
+    function buy(uint256[] memory _params, address[] memory _addresses)
+        public
+        override
+        marketStatusTransitions
+        atMarketStatus(MarketStatus.Trading)
+    {
         require(
-            IERC20(token).balanceOf(msg.sender) >= investmentAmount ||
-                IERC20(token).allowance(owner, msg.sender) >= investmentAmount,
+            IERC20(token).balanceOf(msg.sender) >= _params[0] ||
+                IERC20(token).allowance(_addresses[1], msg.sender) >=
+                _params[0],
             "INSUFFICIENT_AMOUNT"
         );
-        require(to != address(0), "INVALID_ADDRESS");
-        require(minTokensBought > 0, "MUST_BUY_AT_LEAST_1");
+        require(_addresses[2] != address(0), "INVALID_ADDRESS");
+        require(_params[1] > 0, "MUST_BUY_AT_LEAST_1");
 
         // Calculate the tokenValue for this investment
-        uint256 tokenValue = calcBuyAmount(investmentAmount, outcomeIndex);
-        require(tokenValue >= minTokensBought, "PRICE_SLIPPAGE");
+        uint256 tokenValue = calcBuyAmount(_params[0], _params[2], _params[3]);
+        require(tokenValue >= _params[1], "PRICE_SLIPPAGE");
 
-        IERC20(token).transferFrom(msg.sender, address(this), investmentAmount);
-        if (shares.length > 0) {
-            uint256 afterFee = _collectFees(investmentAmount);
-            outcome[outcomeIndex].reserve = outcome[outcomeIndex].reserve.add(
+        IERC20(token).transferFrom(msg.sender, address(this), _params[0]);
+        if (shares.length > 0 || _params[3] > 0) {
+            uint256 afterFee = _collectFees(
+                _params[0],
+                _params[3],
+                _addresses[0]
+            );
+            outcome[_params[2]].reserve = outcome[_params[2]].reserve.add(
                 afterFee
             );
             pool = pool.add(afterFee);
             emit PoolBalanceChanged(pool);
         } else {
-            outcome[outcomeIndex].reserve = outcome[outcomeIndex].reserve.add(
-                investmentAmount
+            outcome[_params[2]].reserve = outcome[_params[2]].reserve.add(
+                _params[0]
             );
-            pool = pool.add(investmentAmount);
+            pool = pool.add(_params[0]);
             emit PoolBalanceChanged(pool);
         }
 
-        _mint(to, outcomeIndex, tokenValue, "");
-        outcome[outcomeIndex].supply = outcome[outcomeIndex].supply.add(
-            tokenValue
-        );
+        _mint(_addresses[2], _params[2], tokenValue, "");
+        outcome[_params[2]].supply = outcome[_params[2]].supply.add(tokenValue);
         totalSupply = totalSupply.add(tokenValue);
 
-        emit Buy(msg.sender, to, outcomeIndex, investmentAmount, tokenValue);
+        emit Buy(msg.sender, _addresses[2], _params[2], _params[0], tokenValue);
     }
 
     /**
      * @dev Sell
      * Market participants can sell option tokens through this function.
+     * _params[0] sellAmount,
+     * _params[1] minReturned,
+     * _params[2] outcomeIndex,
+     * _addresses[0] owner,
+     * _addresses[1] to
      */
-    function sell(
-        uint256 sellAmount,
-        uint256 minReturned,
-        uint256 outcomeIndex,
-        address owner,
-        address to
-    ) public marketStatusTransitions atMarketStatus(MarketStatus.Trading) {
+    function sell(uint256[] memory _params, address[] memory _addresses)
+        public
+        override
+        marketStatusTransitions
+        atMarketStatus(MarketStatus.Trading)
+    {
         require(sellOption == true, "SELL_OPTION_DISABLED");
         require(
-            balanceOf(owner, outcomeIndex) >= sellAmount,
+            balanceOf(_addresses[0], _params[2]) >= _params[0],
             "INSUFFICIENT_AMOUNT"
         );
         require(
-            msg.sender == owner || _operatorApprovals[owner][msg.sender],
+            msg.sender == _addresses[0] ||
+                _operatorApprovals[_addresses[0]][msg.sender],
             "NOT_ELIGIBLE_TO_SELL"
         );
 
-        uint256 returnValue = calcSellAmount(sellAmount, outcomeIndex);
-        require(returnValue >= minReturned, "PRICE_SLIPPAGE");
-        _burn(owner, outcomeIndex, sellAmount);
-        _withdraw(to, returnValue);
-        outcome[outcomeIndex].reserve = outcome[outcomeIndex].reserve.sub(
+        uint256 returnValue = calcSellAmount(_params[0], _params[2]);
+        require(returnValue >= _params[1], "PRICE_SLIPPAGE");
+        _burn(_addresses[0], _params[2], _params[0]);
+        _withdraw(_addresses[1], returnValue);
+        outcome[_params[2]].reserve = outcome[_params[2]].reserve.sub(
             returnValue
         );
-        outcome[outcomeIndex].supply = outcome[outcomeIndex].supply.sub(
-            sellAmount
+        outcome[_params[2]].supply = outcome[_params[2]].supply.sub(_params[0]);
+        totalSupply = totalSupply.sub(_params[0]);
+        emit Sell(
+            msg.sender,
+            _addresses[0],
+            _params[2],
+            _params[0],
+            returnValue
         );
-        totalSupply = totalSupply.sub(sellAmount);
-        emit Sell(msg.sender, to, outcomeIndex, sellAmount, returnValue);
     }
 
     /**
@@ -334,6 +355,7 @@ contract LinerV1 is ERC1155, IMarket {
      */
     function settle(uint256[] memory report)
         public
+        override
         marketStatusTransitions
         atMarketStatus(MarketStatus.Reporting)
     {
@@ -375,7 +397,7 @@ contract LinerV1 is ERC1155, IMarket {
     /**
      * @dev Winnig token holders can claim redemption through this function
      */
-    function claim() public atMarketStatus(MarketStatus.Finalized) {
+    function claim() public override atMarketStatus(MarketStatus.Finalized) {
         uint256 redemption;
         for (uint256 i = 0; i < outcomeNumbers; i++) {
             uint256 balance = balanceOf(msg.sender, i);
@@ -417,7 +439,7 @@ contract LinerV1 is ERC1155, IMarket {
     /**
      * @dev Beneficiaries can withdraw fees through this function.
      */
-    function withdrawFees() public {
+    function withdrawFees() public override {
         uint256 amount = collectedFees[msg.sender];
         collectedFees[msg.sender] = 0;
         IERC20(token).transfer(msg.sender, amount);
@@ -427,11 +449,11 @@ contract LinerV1 is ERC1155, IMarket {
     /**
      * @dev Calclate estimate option token amount for the investment at a time.
      */
-    function calcBuyAmount(uint256 investmentAmount, uint256 outcomeIndex)
-        public
-        view
-        returns (uint256)
-    {
+    function calcBuyAmount(
+        uint256 investmentAmount,
+        uint256 outcomeIndex,
+        uint256 fee
+    ) public view returns (uint256) {
         if (investmentAmount < minInvestment) {
             return 0;
         }
@@ -441,12 +463,13 @@ contract LinerV1 is ERC1155, IMarket {
          */
 
         uint256 afterFee;
-        if (shares.length > 0) {
+        if (shares.length > 0 || fee > 0) {
             uint256 feeRate;
             for (uint256 i = 0; i < shares.length; i++) {
                 feeRate = feeRate.add(shares[i]);
             }
-
+            feeRate = feeRate.add(fee);
+            require(feeRate < GLOBAL_DENOMINATOR);
             uint256 fees = BigDiv.bigDiv2x1(
                 investmentAmount,
                 feeRate,
@@ -551,13 +574,24 @@ contract LinerV1 is ERC1155, IMarket {
     /**
      * @dev Validate market question and outcome lists
      */
-    function validateHash(string memory _question, bytes32[] memory _outcomes)
-        public
-        override
-        view
-        returns (bool)
-    {
-        bytes32 hash = keccak256(abi.encodePacked(_question, _outcomes));
+    function validateHash(
+        string memory _settings,
+        uint256 _outcomeNum,
+        uint256[] memory _conditions,
+        address[] memory _references,
+        address[] memory _beneficiaries,
+        uint256[] memory _shares
+    ) public override view returns (bool) {
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                _settings,
+                _outcomeNum,
+                _conditions,
+                _references,
+                _beneficiaries,
+                _shares
+            )
+        );
         return (hash == hashID);
     }
 
@@ -572,7 +606,11 @@ contract LinerV1 is ERC1155, IMarket {
         emit PoolBalanceChanged(pool);
     }
 
-    function _collectFees(uint256 amount) internal returns (uint256) {
+    function _collectFees(
+        uint256 amount,
+        uint256 fee,
+        address beneficiary
+    ) internal returns (uint256) {
         uint256 fees;
         for (uint256 i = 0; i < shares.length; i++) {
             uint256 portion = BigDiv.bigDiv2x1(
@@ -588,6 +626,14 @@ contract LinerV1 is ERC1155, IMarket {
                 collectedFees[beneficiaries[i]],
                 portion
             );
+        }
+        if (fee > 0) {
+            uint256 portion = BigDiv.bigDiv2x1(amount, fee, GLOBAL_DENOMINATOR);
+            collectedFees[beneficiary] = collectedFees[beneficiary].add(
+                portion
+            );
+            fees = fees.add(portion);
+            emit FeeCollected(beneficiary, collectedFees[beneficiary], portion);
         }
         return amount.sub(fees);
     }

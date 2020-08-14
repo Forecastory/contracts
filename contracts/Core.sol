@@ -20,16 +20,15 @@ contract Core is Ownable {
     event MarketCreated(
         address indexed market,
         address indexed template,
-        string question,
-        bytes32[] outcomes,
+        string indexed settings,
+        uint256 outcomeNum,
         uint256[] conditions,
         address[] references,
         address[] beneficiaries,
-        uint256[] shares,
-        string detail
+        uint256[] shares
     );
     event FeeChanged(
-        address template,
+        address indexed template,
         uint256 indexed oldFee,
         uint256 indexed newFee
     );
@@ -96,13 +95,12 @@ contract Core is Ownable {
      */
     function createMarket(
         IMarket template,
-        string memory question,
-        bytes32[] memory outcomes,
+        string memory settings,
+        uint256 outcomeNum,
         uint256[] memory conditions,
         address[] memory references,
         address[] memory beneficiaries,
-        uint256[] memory shares, //1.000% = 1000 & need to be devided by 100000
-        string memory detail
+        uint256[] memory shares //1.000% = 1000 & need to be devided by 100000
     ) public returns (address) {
         require(templates[address(template)] == true, "UNAUTHORIZED_TEMPLATE");
         if (references.length > 0) {
@@ -133,37 +131,34 @@ contract Core is Ownable {
 
         require(
             template.validate(
-                question,
-                outcomes,
+                settings,
+                outcomeNum,
                 conditions,
                 references,
                 beneficiaries,
-                shares,
-                detail
+                shares
             )
         );
 
         IMarket market = IMarket(_createClone(address(template)));
         market.initialize(
-            question,
-            outcomes,
+            settings,
+            outcomeNum,
             conditions,
             references,
             beneficiaries,
-            shares,
-            detail
+            shares
         );
 
         emit MarketCreated(
             address(market),
             address(template),
-            question,
-            outcomes,
+            settings,
+            outcomeNum,
             conditions,
             references,
             beneficiaries,
-            shares,
-            detail
+            shares
         );
         markets.push(address(market));
         marketIndex[address(market)] = markets.length - 1;

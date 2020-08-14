@@ -32,6 +32,11 @@ contract("Forecastory", (accounts) => {
   const [creator, bob, alice, eve, mock, mock2] = accounts;
   const minter = creator;
 
+  const settings = `{
+    question: "これは日本語だよ　这个是中文　TEST QUESTION",
+    outcomes: [“Yes”, “No”],
+    description: "The website is compliant. This will release the funds to Alice."
+  }`;
   const question = "これは日本語だよ　这个是中文　TEST QUESTION";
   const outcomes = [
     "0x53616d706c654100000000000000000000000000000000000000000000000000",
@@ -58,35 +63,32 @@ contract("Forecastory", (accounts) => {
     });
     await factory.createMarket(
       template.address,
-      question,
-      outcomes,
+      settings,
+      2,
       [start, end, 100000, 0, 100],
       [token.address, mock],
       [eve],
       [5000],
-      description,
       { from: mock }
     );
     await factory.createMarket(
       template.address,
-      question,
-      outcomes,
+      settings,
+      2,
       [start, end, 50000, 0, 100],
       [token.address, mock],
       [eve],
       [5000],
-      description,
       { from: mock }
     );
     await factory.createMarket(
       template.address,
-      question,
-      outcomes,
+      settings,
+      2,
       [start, end, 200000, 0, 100],
       [token.address, mock],
       [eve],
       [5000],
-      description,
       { from: mock }
     );
     const marketAddress1 = await factory.markets(0);
@@ -117,7 +119,7 @@ contract("Forecastory", (accounts) => {
         it("returns the proper amount", async function () {
           await market1.nextMarketStatus();
           expect(
-            await market1.calcBuyAmount(1000000, 0, { from: bob })
+            await market1.calcBuyAmount(1000000, 0, 0, { from: bob })
           ).to.be.bignumber.equal("1378");
         });
       });
@@ -125,7 +127,7 @@ contract("Forecastory", (accounts) => {
         it("returns the proper amount", async function () {
           await market2.nextMarketStatus();
           expect(
-            await market2.calcBuyAmount(1000000, 0, { from: bob })
+            await market2.calcBuyAmount(1000000, 0, 0, { from: bob })
           ).to.be.bignumber.equal("1949");
         });
       });
@@ -133,8 +135,16 @@ contract("Forecastory", (accounts) => {
         it("returns the proper amount", async function () {
           await market3.nextMarketStatus();
           expect(
-            await market3.calcBuyAmount(1000000, 0, { from: bob })
+            await market3.calcBuyAmount(1000000, 0, 0, { from: bob })
           ).to.be.bignumber.equal("974");
+        });
+      });
+      context("When the slope is 1 and fee", function () {
+        it("returns the proper amount", async function () {
+          await market1.nextMarketStatus();
+          expect(
+            await market1.calcBuyAmount(1000000, 0, 5000, { from: bob })
+          ).to.be.bignumber.equal("1341");
         });
       });
     });
@@ -143,11 +153,13 @@ contract("Forecastory", (accounts) => {
       context("When the slope is 1", function () {
         it("returns the option token", async function () {
           await token.approve(market1.address, 1000000, { from: bob });
-          await market1.buy(1000000, 1, 0, bob, bob, { from: bob });
+          await market1.buy([1000000, 1, 0, 0], [ZERO_ADDRESS, bob, bob], {
+            from: bob,
+          });
           expect(await market1.balanceOf(bob, 0)).to.be.bignumber.equal("1378");
           expect(await token.balanceOf(bob)).to.be.bignumber.equal("9000000");
           expect(
-            await market1.calcBuyAmount(1000000, 0, { from: bob })
+            await market1.calcBuyAmount(1000000, 0, 0, { from: bob })
           ).to.be.bignumber.equal("571");
           expect(await market1.getStake(0)).to.be.bignumber.equal("950000");
           expect(await market1.pool()).to.be.bignumber.equal("950000");
@@ -158,13 +170,38 @@ contract("Forecastory", (accounts) => {
           );
         });
       });
+      context("When the slope is 1 and fee", function () {
+        it("returns the option token", async function () {
+          await token.approve(market1.address, 1000000, { from: bob });
+          await market1.buy([1000000, 1, 0, 5000], [alice, bob, bob], {
+            from: bob,
+          });
+          expect(await market1.balanceOf(bob, 0)).to.be.bignumber.equal("1341");
+          expect(await token.balanceOf(bob)).to.be.bignumber.equal("9000000");
+          expect(
+            await market1.calcBuyAmount(1000000, 0, 0, { from: bob })
+          ).to.be.bignumber.equal("582");
+          expect(await market1.getStake(0)).to.be.bignumber.equal("900000");
+          expect(await market1.pool()).to.be.bignumber.equal("900000");
+          expect(await market1.totalSupply()).to.be.bignumber.equal("1341");
+          expect(await market1.getSupply(0)).to.be.bignumber.equal("1341");
+          expect(await market1.collectedFees(eve)).to.be.bignumber.equal(
+            "50000"
+          );
+          expect(await market1.collectedFees(alice)).to.be.bignumber.equal(
+            "50000"
+          );
+        });
+      });
     });
 
     describe("Calculate sell return", function () {
       context("When the slope is 1 ", function () {
         it("returns the proper amount", async function () {
           await token.approve(market1.address, 1000000, { from: bob });
-          await market1.buy(1000000, 1, 0, bob, bob, { from: bob });
+          await market1.buy([1000000, 1, 0, 0], [ZERO_ADDRESS, bob, bob], {
+            from: bob,
+          });
           expect(
             await market1.calcSellAmount(1378, 0, { from: bob })
           ).to.be.bignumber.equal("950000");
@@ -173,7 +210,9 @@ contract("Forecastory", (accounts) => {
       context("When the slope is 1/2 ", function () {
         it("returns the proper amount", async function () {
           await token.approve(market2.address, 1000000, { from: bob });
-          await market2.buy(1000000, 1, 0, bob, bob, { from: bob });
+          await market2.buy([1000000, 1, 0, 0], [ZERO_ADDRESS, bob, bob], {
+            from: bob,
+          });
           expect(
             await market2.calcSellAmount(1949, 0, { from: bob })
           ).to.be.bignumber.equal("950000");
@@ -182,7 +221,9 @@ contract("Forecastory", (accounts) => {
       context("When the slope is 2 ", function () {
         it("returns the proper amount", async function () {
           await token.approve(market3.address, 1000000, { from: bob });
-          await market3.buy(1000000, 1, 0, bob, bob, { from: bob });
+          await market3.buy([1000000, 1, 0, 0], [ZERO_ADDRESS, bob, bob], {
+            from: bob,
+          });
           expect(
             await market3.calcSellAmount(974, 0, { from: bob })
           ).to.be.bignumber.equal("950000");
@@ -194,9 +235,11 @@ contract("Forecastory", (accounts) => {
       context("When the slope is 1 ", function () {
         it("returns the proper amount of the collateral", async function () {
           await token.approve(market1.address, 1000000, { from: bob });
-          await market1.buy(1000000, 1, 0, bob, bob, { from: bob });
+          await market1.buy([1000000, 1, 0, 0], [ZERO_ADDRESS, bob, bob], {
+            from: bob,
+          });
           await market1.setApprovalForAll(market1.address, { from: bob });
-          await market1.sell(1378, 1, 0, bob, bob, { from: bob });
+          await market1.sell([1378, 1, 0], [bob, bob], { from: bob });
           expect(await market1.balanceOf(bob, 0)).to.be.bignumber.equal("0");
           expect(await token.balanceOf(bob)).to.be.bignumber.equal("9950000");
           expect(
@@ -214,7 +257,9 @@ contract("Forecastory", (accounts) => {
       context("When the slope is 1", function () {
         it("allows withdrawal", async function () {
           await token.approve(market1.address, 1000000, { from: bob });
-          await market1.buy(1000000, 1, 0, bob, bob, { from: bob });
+          await market1.buy([1000000, 1, 0, 0], [ZERO_ADDRESS, bob, bob], {
+            from: bob,
+          });
           await market1.withdrawFees({ from: eve });
           expect(await token.balanceOf(eve)).to.be.bignumber.equal("50000");
           expect(await market1.collectedFees(eve)).to.be.bignumber.equal("0");
@@ -259,9 +304,13 @@ contract("Forecastory", (accounts) => {
       context("when there is no bonus", function () {
         it("returns the dividend", async function () {
           await token.approve(market1.address, 1000000, { from: bob });
-          await market1.buy(1000000, 1, 0, bob, bob, { from: bob });
+          await market1.buy([1000000, 1, 0, 0], [ZERO_ADDRESS, bob, bob], {
+            from: bob,
+          });
           await token.approve(market1.address, 1000000, { from: alice });
-          await market1.buy(1000000, 1, 1, alice, alice, { from: alice });
+          await market1.buy([1000000, 1, 1, 0], [ZERO_ADDRESS, alice, alice], {
+            from: alice,
+          });
           await time.increase(time.duration.days(31));
           await market1.settle([0, 100000], { from: mock });
           await market1.claim({ from: alice });
@@ -274,7 +323,9 @@ contract("Forecastory", (accounts) => {
       context("When there is no correct predictor", function () {
         it("returns the dividend", async function () {
           await token.approve(market1.address, 1000000, { from: bob });
-          await market1.buy(1000000, 1, 0, bob, bob, { from: bob });
+          await market1.buy([1000000, 1, 0, 0], [ZERO_ADDRESS, bob, bob], {
+            from: bob,
+          });
           await time.increase(time.duration.days(31));
           await market1.settle([0, 100000], { from: mock });
           await market1.claim({ from: bob });
@@ -285,7 +336,9 @@ contract("Forecastory", (accounts) => {
       context("When claimed by a stranger", function () {
         it("returns nothing", async function () {
           await token.approve(market1.address, 1000000, { from: bob });
-          await market1.buy(1000000, 1, 0, bob, bob, { from: bob });
+          await market1.buy([1000000, 1, 0, 0], [ZERO_ADDRESS, bob, bob], {
+            from: bob,
+          });
           await time.increase(time.duration.days(31));
           await market1.settle([0, 100000], { from: mock });
           await market1.claim({ from: eve });
