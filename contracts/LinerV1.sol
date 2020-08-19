@@ -45,14 +45,13 @@ contract LinerV1 is ERC1155, IMarket {
         uint256 claimedValue,
         uint256 returnValue
     );
-    event PoolBalanceChanged(uint256 pool);
     event FeeCollected(
         address beneficiary,
         uint256 totalAccrued,
         uint256 collected
     );
     event FeeWithdrawal(address beneficiary, uint256 amount);
-    event MarketSettled(uint256[] report);
+    event MarketSettled(uint256[] report, uint256[] payout);
     event MarketStatusChanged(MarketStatus statusValue);
 
     /**
@@ -78,8 +77,8 @@ contract LinerV1 is ERC1155, IMarket {
     /// @dev The minimum amount of `currency` investment accepted.
     uint256 public minInvestment;
 
-    /// @dev When the sell option is disabled, option tokens cannot be sold.
-    bool public sellOption;
+    /// @dev When the sell option is disabled, option tokens cannot be sold. (0 = true)
+    uint256 public sellOption;
 
     ///@dev Market contents (Registered when market is created)
     bytes32 public hashID;
@@ -107,15 +106,6 @@ contract LinerV1 is ERC1155, IMarket {
     /**
      * MARKET VARIABLES
      */
-
-    /// @dev Pool balance at a moment
-    uint256 public pool;
-
-    /// @dev
-    uint256 public totalSupply;
-
-    /// @dev
-    uint256 public bonus;
 
     /// @dev collected fee balances
     mapping(address => uint256) public collectedFees;
@@ -221,11 +211,7 @@ contract LinerV1 is ERC1155, IMarket {
         startTime = _conditions[0];
         endTime = _conditions[1];
         buySlopeNum = _conditions[2];
-        if (_conditions[3] == 0) {
-            sellOption = true;
-        } else {
-            sellOption = false;
-        }
+        sellOption = _conditions[3];
         minInvestment = _conditions[4];
         token = IERC20(_references[0]);
         oracle = _references[1];
@@ -259,9 +245,8 @@ contract LinerV1 is ERC1155, IMarket {
      * _addresses[1] owner,
      * _addresses[2] to
      */
-    function buy(uint256[] memory _params, address[] memory _addresses)
-        public
-        override
+    function buy(uint256[] calldata _params, address[] calldata _addresses)
+        external
         marketStatusTransitions
         atMarketStatus(MarketStatus.Trading)
     {
@@ -288,19 +273,14 @@ contract LinerV1 is ERC1155, IMarket {
             outcome[_params[2]].reserve = outcome[_params[2]].reserve.add(
                 afterFee
             );
-            pool = pool.add(afterFee);
-            emit PoolBalanceChanged(pool);
         } else {
             outcome[_params[2]].reserve = outcome[_params[2]].reserve.add(
                 _params[0]
             );
-            pool = pool.add(_params[0]);
-            emit PoolBalanceChanged(pool);
         }
 
         _mint(_addresses[2], _params[2], tokenValue, "");
         outcome[_params[2]].supply = outcome[_params[2]].supply.add(tokenValue);
-        totalSupply = totalSupply.add(tokenValue);
 
         emit Buy(msg.sender, _addresses[2], _params[2], _params[0], tokenValue);
     }
@@ -314,13 +294,12 @@ contract LinerV1 is ERC1155, IMarket {
      * _addresses[0] owner,
      * _addresses[1] to
      */
-    function sell(uint256[] memory _params, address[] memory _addresses)
-        public
-        override
+    function sell(uint256[] calldata _params, address[] calldata _addresses)
+        external
         marketStatusTransitions
         atMarketStatus(MarketStatus.Trading)
     {
-        require(sellOption == true, "SELL_OPTION_DISABLED");
+        require(sellOption == 0, "SELL_OPTION_DISABLED");
         require(
             balanceOf(_addresses[0], _params[2]) >= _params[0],
             "INSUFFICIENT_AMOUNT"
@@ -334,12 +313,11 @@ contract LinerV1 is ERC1155, IMarket {
         uint256 returnValue = calcSellAmount(_params[0], _params[2]);
         require(returnValue >= _params[1], "PRICE_SLIPPAGE");
         _burn(_addresses[0], _params[2], _params[0]);
-        _withdraw(_addresses[1], returnValue);
         outcome[_params[2]].reserve = outcome[_params[2]].reserve.sub(
             returnValue
         );
         outcome[_params[2]].supply = outcome[_params[2]].supply.sub(_params[0]);
-        totalSupply = totalSupply.sub(_params[0]);
+        IERC20(token).transfer(_addresses[1], returnValue);
         emit Sell(
             msg.sender,
             _addresses[0],
@@ -353,9 +331,8 @@ contract LinerV1 is ERC1155, IMarket {
      * @dev Settle
      * Registered oracle settles market by reporting payout shares.
      */
-    function settle(uint256[] memory report)
-        public
-        override
+    function settle(uint256[] calldata report)
+        external
         marketStatusTransitions
         atMarketStatus(MarketStatus.Reporting)
     {
@@ -374,76 +351,89 @@ contract LinerV1 is ERC1155, IMarket {
          * If there is no supply for a winning option,
          * the dividend of that will be distributed to all token holders.
          */
-        for (uint256 i = 0; i < report.length; i++) {
+        uint256 totalReserve;
+        uint256 totalSupply;
+        uint256 bonus;
+        uint256[] memory _payout = new uint256[](outcomeNumbers);
+        for (uint256 i = 0; i < outcomeNumbers; i++) {
+            totalReserve = totalReserve.add(outcome[i].reserve);
+            totalSupply = totalSupply.add(outcome[i].supply);
+        }
+        for (uint256 i = 0; i < outcomeNumbers; i++) {
             if (outcome[i].supply == 0) {
                 uint256 temp = BigDiv.bigDiv2x1(
-                    pool,
+                    totalReserve,
                     report[i],
                     GLOBAL_DENOMINATOR
                 );
                 bonus = bonus.add(temp);
+            }
+        }
+        for (uint256 i = 0; i < report.length; i++) {
+            if (bonus > 0) {
+                if (outcome[i].supply != 0) {
+                    uint256 allocation = BigDiv.bigDiv2x1(
+                        totalReserve,
+                        report[i],
+                        GLOBAL_DENOMINATOR
+                    );
+                    uint256 bonusShare = BigDiv.bigDiv2x1(
+                        bonus,
+                        outcome[i].supply,
+                        totalSupply
+                    );
+                    outcome[i].dividend = bonusShare + allocation;
+                    _payout[i] = bonusShare + allocation;
+                }
             } else {
-                outcome[i].dividend = BigDiv.bigDiv2x1(
-                    pool,
+                uint256 allocation = BigDiv.bigDiv2x1(
+                    totalReserve,
                     report[i],
                     GLOBAL_DENOMINATOR
                 );
+                outcome[i].dividend = allocation;
+                _payout[i] = allocation;
             }
         }
 
-        emit MarketSettled(report);
+        emit MarketSettled(report, _payout);
     }
 
     /**
      * @dev Winnig token holders can claim redemption through this function
      */
-    function claim() public override atMarketStatus(MarketStatus.Finalized) {
+    function claim() external atMarketStatus(MarketStatus.Finalized) {
         uint256 redemption;
         for (uint256 i = 0; i < outcomeNumbers; i++) {
             uint256 balance = balanceOf(msg.sender, i);
             if (balance > 0) {
-                uint256 retVal;
-
-                if (bonus > 0) {
-                    uint256 value = BigDiv.bigDiv2x1(
-                        bonus,
-                        balance,
-                        totalSupply
-                    );
-                    bonus = bonus.sub(value);
-                    retVal = retVal.add(value);
-                }
                 if (outcome[i].dividend > 0) {
                     uint256 value = BigDiv.bigDiv2x1(
                         outcome[i].dividend,
                         balance,
                         outcome[i].supply
                     );
-                    outcome[i].dividend = outcome[i].dividend.sub(value);
-                    retVal = retVal.add(value);
-                }
-                if (retVal > 0) {
                     _burn(msg.sender, i, balance);
                     outcome[i].supply = outcome[i].supply.sub(balance);
-                    totalSupply = totalSupply.sub(balance);
-                    redemption = redemption.add(retVal);
-                    emit Claimed(msg.sender, i, balance, retVal);
+                    outcome[i].dividend = outcome[i].dividend.sub(value);
+                    redemption = redemption.add(value);
+                    emit Claimed(msg.sender, i, balance, value);
                 }
             }
         }
         if (redemption > 0) {
-            _withdraw(msg.sender, redemption);
+            IERC20(token).transfer(msg.sender, redemption);
         }
     }
 
     /**
      * @dev Beneficiaries can withdraw fees through this function.
      */
-    function withdrawFees() public override {
+    function withdrawFees() external {
         uint256 amount = collectedFees[msg.sender];
         collectedFees[msg.sender] = 0;
-        IERC20(token).transfer(msg.sender, amount);
         emit FeeWithdrawal(msg.sender, amount);
+        IERC20(token).transfer(msg.sender, amount);
     }
 
     /**
@@ -514,7 +504,7 @@ contract LinerV1 is ERC1155, IMarket {
         view
         returns (uint256)
     {
-        require(sellOption == true, "SELL OPTION IS DISABLED");
+        require(sellOption == 0, "SELL OPTION IS DISABLED");
         uint256 retVal;
         if (marketStatus == MarketStatus.Trading) {
             uint256 supply = outcome[outcomeIndex].supply;
@@ -567,7 +557,7 @@ contract LinerV1 is ERC1155, IMarket {
     /**
      * @dev a function to check the factory address
      */
-    function creator() public override view returns (address) {
+    function creator() external override view returns (address) {
         return factory;
     }
 
@@ -575,13 +565,13 @@ contract LinerV1 is ERC1155, IMarket {
      * @dev Validate market question and outcome lists
      */
     function validateHash(
-        string memory _settings,
+        string calldata _settings,
         uint256 _outcomeNum,
-        uint256[] memory _conditions,
-        address[] memory _references,
-        address[] memory _beneficiaries,
-        uint256[] memory _shares
-    ) public override view returns (bool) {
+        uint256[] calldata _conditions,
+        address[] calldata _references,
+        address[] calldata _beneficiaries,
+        uint256[] calldata _shares
+    ) external override view returns (bool) {
         bytes32 hash = keccak256(
             abi.encodePacked(
                 _settings,
@@ -598,12 +588,6 @@ contract LinerV1 is ERC1155, IMarket {
     function _nextMarketStatus() internal {
         marketStatus = MarketStatus(uint256(marketStatus) + 1);
         emit MarketStatusChanged(marketStatus);
-    }
-
-    function _withdraw(address to, uint256 amount) internal {
-        IERC20(token).transfer(to, amount);
-        pool = pool.sub(amount);
-        emit PoolBalanceChanged(pool);
     }
 
     function _collectFees(

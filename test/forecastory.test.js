@@ -162,8 +162,6 @@ contract("Forecastory", (accounts) => {
             await market1.calcBuyAmount(1000000, 0, 0, { from: bob })
           ).to.be.bignumber.equal("571");
           expect(await market1.getStake(0)).to.be.bignumber.equal("950000");
-          expect(await market1.pool()).to.be.bignumber.equal("950000");
-          expect(await market1.totalSupply()).to.be.bignumber.equal("1378");
           expect(await market1.getSupply(0)).to.be.bignumber.equal("1378");
           expect(await market1.collectedFees(eve)).to.be.bignumber.equal(
             "50000"
@@ -182,8 +180,6 @@ contract("Forecastory", (accounts) => {
             await market1.calcBuyAmount(1000000, 0, 0, { from: bob })
           ).to.be.bignumber.equal("582");
           expect(await market1.getStake(0)).to.be.bignumber.equal("900000");
-          expect(await market1.pool()).to.be.bignumber.equal("900000");
-          expect(await market1.totalSupply()).to.be.bignumber.equal("1341");
           expect(await market1.getSupply(0)).to.be.bignumber.equal("1341");
           expect(await market1.collectedFees(eve)).to.be.bignumber.equal(
             "50000"
@@ -247,8 +243,6 @@ contract("Forecastory", (accounts) => {
           ).to.be.bignumber.equal("0");
           expect(await market1.getStake(0)).to.be.bignumber.equal("0");
           expect(await market1.getSupply(0)).to.be.bignumber.equal("0");
-          expect(await market1.totalSupply()).to.be.bignumber.equal("0");
-          expect(await market1.pool()).to.be.bignumber.equal("0");
         });
       });
     });

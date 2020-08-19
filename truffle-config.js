@@ -47,7 +47,7 @@ module.exports = {
       port: 8545, // Standard Ethereum port (default: none)
       network_id: "*", // Any network (default: none)
       //gas: 10000000000, // Gas sent with each transaction (default: ~6700000)
-      //gasPrice: 20000000000, // 20 gwei (in wei) (default: 100 gwei)
+      gasPrice: 200000000000, // 20 gwei (in wei) (default: 100 gwei)
     },
     // Another network with more advanced options...
     // advanced: {
@@ -89,7 +89,7 @@ module.exports = {
       // settings: {          // See the solidity docs for advice about optimization and evmVersion
       optimizer: {
         enabled: true,
-        runs: 200,
+        runs: 2000,
       },
       //  evmVersion: "byzantium"
       // }

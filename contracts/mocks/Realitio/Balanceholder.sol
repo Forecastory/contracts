@@ -1,6 +1,6 @@
 pragma solidity ^0.6.0;
 
-contract BalanceHolder {
+contract Balanceholder {
     mapping(address => uint256) public balanceOf;
 
     event LogWithdraw(address indexed user, uint256 amount);

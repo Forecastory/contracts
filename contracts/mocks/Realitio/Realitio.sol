@@ -2,9 +2,9 @@ pragma solidity ^0.6.0;
 
 import "./RealitioSafeMath256.sol";
 import "./RealitioSafeMath32.sol";
-import "./BalanceHolder.sol";
+import "./Balanceholder.sol";
 
-contract Realitio is BalanceHolder {
+contract Realitio is Balanceholder {
     using RealitioSafeMath256 for uint256;
     using RealitioSafeMath32 for uint32;
 

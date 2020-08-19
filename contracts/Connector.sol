@@ -9,6 +9,7 @@ pragma experimental ABIEncoderV2;
 
 import "./mocks/Realitio/Realitio.sol";
 import "./IMarket.sol";
+import "./IResolution.sol";
 import "./Core.sol";
 
 contract Connector is Ownable {
@@ -82,7 +83,7 @@ contract Connector is Ownable {
             response ==
             0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
         ) {
-            require(payout[num] == 100000);
+            require(payout[num - 1] == 100000);
         } else {
             uint256 decode;
             assembly {
@@ -90,6 +91,6 @@ contract Connector is Ownable {
             }
             require(payout[decode] == 100000);
         }
-        IMarket(market).settle(result);
+        IResolution(market).settle(result);
     }
 }

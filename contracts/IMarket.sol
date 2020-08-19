@@ -33,48 +33,19 @@ abstract contract IMarket {
     ) public virtual returns (bool);
 
     /**
-     * @dev Buy function interface
-     */
-    function buy(uint256[] memory _params, address[] memory _addresses)
-        public
-        virtual;
-
-    /**
-     * @dev Sell function interface
-     */
-    function sell(uint256[] memory _params, address[] memory _addresses)
-        public
-        virtual;
-
-    /**
-     * @dev Claim function interface
-     */
-    function claim() public virtual;
-
-    /**
-     * @dev Withdraw fee function interface
-     */
-    function withdrawFees() public virtual;
-
-    /**
-     * @dev Settlement function interface
-     */
-    function settle(uint256[] memory report) public virtual;
-
-    /**
      * @dev Check the creator's address
      */
-    function creator() public virtual view returns (address);
+    function creator() external virtual view returns (address);
 
     /**
      * @dev Check whethere the market conditions are correct.
      */
     function validateHash(
-        string memory _settings,
+        string calldata _settings,
         uint256 _outcomeNum,
-        uint256[] memory _conditions,
-        address[] memory _references,
-        address[] memory _beneficiaries,
-        uint256[] memory _shares
-    ) public virtual view returns (bool);
+        uint256[] calldata _conditions,
+        address[] calldata _references,
+        address[] calldata _beneficiaries,
+        uint256[] calldata _shares
+    ) external virtual view returns (bool);
 }
