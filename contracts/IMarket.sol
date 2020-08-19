@@ -41,11 +41,11 @@ abstract contract IMarket {
      * @dev Check whethere the market conditions are correct.
      */
     function validateHash(
-        string calldata _settings,
+        string memory _settings,
         uint256 _outcomeNum,
-        uint256[] calldata _conditions,
-        address[] calldata _references,
-        address[] calldata _beneficiaries,
-        uint256[] calldata _shares
-    ) external virtual view returns (bool);
+        uint256[] memory _conditions,
+        address[] memory _references,
+        address[] memory _beneficiaries,
+        uint256[] memory _shares
+    ) public virtual view returns (bool);
 }

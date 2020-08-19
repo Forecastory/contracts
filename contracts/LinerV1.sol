@@ -245,8 +245,8 @@ contract LinerV1 is ERC1155, IMarket {
      * _addresses[1] owner,
      * _addresses[2] to
      */
-    function buy(uint256[] calldata _params, address[] calldata _addresses)
-        external
+    function buy(uint256[] memory _params, address[] memory _addresses)
+        public
         marketStatusTransitions
         atMarketStatus(MarketStatus.Trading)
     {
@@ -294,8 +294,8 @@ contract LinerV1 is ERC1155, IMarket {
      * _addresses[0] owner,
      * _addresses[1] to
      */
-    function sell(uint256[] calldata _params, address[] calldata _addresses)
-        external
+    function sell(uint256[] memory _params, address[] memory _addresses)
+        public
         marketStatusTransitions
         atMarketStatus(MarketStatus.Trading)
     {
@@ -331,8 +331,8 @@ contract LinerV1 is ERC1155, IMarket {
      * @dev Settle
      * Registered oracle settles market by reporting payout shares.
      */
-    function settle(uint256[] calldata report)
-        external
+    function settle(uint256[] memory report)
+        public
         marketStatusTransitions
         atMarketStatus(MarketStatus.Reporting)
     {
@@ -402,7 +402,7 @@ contract LinerV1 is ERC1155, IMarket {
     /**
      * @dev Winnig token holders can claim redemption through this function
      */
-    function claim() external atMarketStatus(MarketStatus.Finalized) {
+    function claim() public atMarketStatus(MarketStatus.Finalized) {
         uint256 redemption;
         for (uint256 i = 0; i < outcomeNumbers; i++) {
             uint256 balance = balanceOf(msg.sender, i);
@@ -429,7 +429,7 @@ contract LinerV1 is ERC1155, IMarket {
     /**
      * @dev Beneficiaries can withdraw fees through this function.
      */
-    function withdrawFees() external {
+    function withdrawFees() public {
         uint256 amount = collectedFees[msg.sender];
         collectedFees[msg.sender] = 0;
         emit FeeWithdrawal(msg.sender, amount);
@@ -557,7 +557,7 @@ contract LinerV1 is ERC1155, IMarket {
     /**
      * @dev a function to check the factory address
      */
-    function creator() external override view returns (address) {
+    function creator() public override view returns (address) {
         return factory;
     }
 
@@ -565,13 +565,13 @@ contract LinerV1 is ERC1155, IMarket {
      * @dev Validate market question and outcome lists
      */
     function validateHash(
-        string calldata _settings,
+        string memory _settings,
         uint256 _outcomeNum,
-        uint256[] calldata _conditions,
-        address[] calldata _references,
-        address[] calldata _beneficiaries,
-        uint256[] calldata _shares
-    ) external override view returns (bool) {
+        uint256[] memory _conditions,
+        address[] memory _references,
+        address[] memory _beneficiaries,
+        uint256[] memory _shares
+    ) public override view returns (bool) {
         bytes32 hash = keccak256(
             abi.encodePacked(
                 _settings,

@@ -6,6 +6,6 @@
 
 pragma solidity ^0.6.0;
 
-interface IResolution {
-    function settle(uint256[] calldata report) external;
+abstract contract IResolution {
+    function settle(uint256[] memory report) public virtual;
 }
