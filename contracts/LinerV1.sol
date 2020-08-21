@@ -84,6 +84,7 @@ contract LinerV1 is ERC1155, IMarket {
     bytes32 public hashID;
     uint256 public startTime;
     uint256 public endTime;
+    uint256 public reportTime;
     address public oracle;
     IERC20 public token;
     address[] public beneficiaries;
@@ -145,9 +146,10 @@ contract LinerV1 is ERC1155, IMarket {
      * outcomes = potential outcomes
      * conditions[0] = startTime
      * conditions[1] = endTime
-     * conditions[2] = buySlopeNum
-     * conditions[3] = sell option (0:yes 1:no)
-     * conditions[4] = minimum investment value
+     * conditions[2] = reportTime
+     * conditions[3] = buySlopeNum
+     * conditions[4] = sell option (0:yes 1:no)
+     * conditions[5] = minimum investment value
      * references[0] = ERC20 token used as the collateral
      * references[1] = oracle address settles the market
      * beneficiaries[] = beneficiary addresses collect fees
@@ -166,10 +168,11 @@ contract LinerV1 is ERC1155, IMarket {
         require(_outcomeNum >= 2);
         require(
             _conditions[1].sub(_conditions[0]) > 1 days &&
-                _conditions[1].sub(now) > 1 days
+                _conditions[1].sub(now) > 1 days &&
+                _conditions[2] >= _conditions[1]
         );
-        require(_conditions[2] < MAX_BEFORE_SQUARE);
-        require(_conditions[3] < 2);
+        require(_conditions[3] < MAX_BEFORE_SQUARE);
+        require(_conditions[4] < 2);
         require(_references[0] != address(0) && _references[1] != address(0));
         require(_beneficiaries.length == _shares.length);
 
@@ -210,9 +213,10 @@ contract LinerV1 is ERC1155, IMarket {
         outcomeNumbers = _outcomeNum;
         startTime = _conditions[0];
         endTime = _conditions[1];
-        buySlopeNum = _conditions[2];
-        sellOption = _conditions[3];
-        minInvestment = _conditions[4];
+        reportTime = _conditions[2];
+        buySlopeNum = _conditions[3];
+        sellOption = _conditions[4];
+        minInvestment = _conditions[5];
         token = IERC20(_references[0]);
         oracle = _references[1];
         beneficiaries = _beneficiaries;
@@ -336,6 +340,7 @@ contract LinerV1 is ERC1155, IMarket {
         marketStatusTransitions
         atMarketStatus(MarketStatus.Reporting)
     {
+        require(now >= reportTime, "BEFORE_REPORT_TIME");
         require(msg.sender == oracle, "UNAUTHORIZED_ORACLE");
         uint256 total;
         for (uint256 i = 0; i < report.length; i++) {

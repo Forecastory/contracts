@@ -50,6 +50,7 @@ contract("Forecastory", (accounts) => {
     token = await Token.new({ from: creator });
     start = await time.latest();
     end = parseInt(start) + parseInt(time.duration.days(30));
+    report = end;
     await token.mint(bob, 10000000, { from: minter });
     await token.mint(alice, 10000000, { from: minter });
     await factory.approveTemplate(template.address, true, {
@@ -65,7 +66,7 @@ contract("Forecastory", (accounts) => {
       template.address,
       settings,
       2,
-      [start, end, 100000, 0, 100],
+      [start, end, report, 100000, 0, 100],
       [token.address, mock],
       [eve],
       [5000],
@@ -75,7 +76,7 @@ contract("Forecastory", (accounts) => {
       template.address,
       settings,
       2,
-      [start, end, 50000, 0, 100],
+      [start, end, report, 50000, 0, 100],
       [token.address, mock],
       [eve],
       [5000],
@@ -85,7 +86,7 @@ contract("Forecastory", (accounts) => {
       template.address,
       settings,
       2,
-      [start, end, 200000, 0, 100],
+      [start, end, report, 200000, 0, 100],
       [token.address, mock],
       [eve],
       [5000],

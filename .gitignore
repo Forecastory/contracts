@@ -1,5 +1,6 @@
 
 build/
 node_modules/
+migrations/2_deploy_contracts.js
 .infuraKey
 .mnemonic

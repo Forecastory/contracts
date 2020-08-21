@@ -67,7 +67,7 @@ contract Connector is Ownable {
             realityParams,
             arbitrator,
             timeout,
-            uint32(conditions[1]),
+            uint32(conditions[2]),
             0
         );
 
