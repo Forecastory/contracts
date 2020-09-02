@@ -20,7 +20,7 @@ contract Core is Ownable {
     event MarketCreated(
         address indexed market,
         address indexed template,
-        string indexed settings,
+        string settings,
         uint256 outcomeNum,
         uint256[] conditions,
         address[] references,
