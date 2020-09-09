@@ -20,6 +20,8 @@ contract Connector is Ownable {
     address reality;
     address arbitrator;
 
+    event Test(bytes32, uint256);
+
     mapping(address => bytes32) questionId;
 
     constructor(
@@ -72,25 +74,40 @@ contract Connector is Ownable {
         );
 
         questionId[market] = qid;
+
+        return market;
     }
 
-    function settleMarket(address market, uint256[] memory payout) public {
-        bytes32 id = questionId[market];
+    function settleMarket(address market) public {
+        bytes32 id = getQuestionId(market);
         bytes32 response = Realitio(reality).resultFor(id);
-        uint256 num = payout.length;
-        uint256[] memory result;
+        uint256 length = IResolution(market).outcomeNumbers();
+        uint256[] memory payout = new uint256[](length);
+        emit Test(response, length);
+
         if (
             response ==
             0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
         ) {
-            require(payout[num - 1] == 100000);
-        } else {
-            uint256 decode;
-            assembly {
-                decode := mload(add(response, 32))
+            for (uint256 i = 0; i < length - 1; i++) {
+                payout[i] = 0;
             }
-            require(payout[decode] == 100000);
+            payout[length - 1] = 100000;
+        } else {
+            uint256 result = uint256(response);
+            for (uint256 i = 0; i < length; i++) {
+                if (i != result) {
+                    payout[i] = 0;
+                } else {
+                    payout[i] = 100000;
+                }
+            }
         }
-        IResolution(market).settle(result);
+
+        IResolution(market).settle(payout);
+    }
+
+    function getQuestionId(address market) public view returns (bytes32) {
+        return questionId[market];
     }
 }

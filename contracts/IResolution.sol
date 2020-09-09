@@ -8,4 +8,6 @@ pragma solidity ^0.6.0;
 
 abstract contract IResolution {
     function settle(uint256[] memory report) public virtual;
+
+    function outcomeNumbers() public virtual view returns (uint256);
 }
