@@ -476,7 +476,10 @@ contract LinerV1 is ERC1155, IMarket {
         tokenValue /= priceIncrement;
         tokenValue -= supply;
 
-        if (marketStatus == MarketStatus.Trading) {
+        if (
+            marketStatus == MarketStatus.Trading ||
+            marketStatus == MarketStatus.BeforeTrading
+        ) {
             return tokenValue;
         } else {
             return 0;
