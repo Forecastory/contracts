@@ -12,15 +12,13 @@ import "./IMarket.sol";
 import "./IResolution.sol";
 import "./Core.sol";
 
-contract Connector is Ownable {
+contract Connector {
     using SafeMath for uint256;
     using Address for address;
 
     address factory;
     address reality;
     address arbitrator;
-
-    event Test(bytes32, uint256);
 
     mapping(address => bytes32) questionId;
 
@@ -83,7 +81,6 @@ contract Connector is Ownable {
         bytes32 response = Realitio(reality).resultFor(id);
         uint256 length = IResolution(market).outcomeNumbers();
         uint256[] memory payout = new uint256[](length);
-        emit Test(response, length);
 
         if (
             response ==
