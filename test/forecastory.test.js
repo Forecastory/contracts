@@ -286,7 +286,7 @@ contract("Forecastory", (accounts) => {
           );
           expect(
             await market1.calcBuyAmount((1e19).toString(), 0, 0, { from: bob })
-          ).to.be.bignumber.equal("8419194195194093852");
+          ).to.be.bignumber.equal("8419194195194093853");
           expect(await market1.getStake(0)).to.be.bignumber.equal(
             "9000000000000000000"
           );

@@ -464,18 +464,17 @@ contract LinerV1 is ERC1155, IMarket {
         /**
          * Calculate the tokenValue for this investment.
          */
-
         uint256 supply = outcome[outcomeIndex].supply;
+        uint256 reserve = outcome[outcomeIndex].reserve;
+        uint256 newReserve = reserve + afterFee;
         uint256 initialPrice = startPrice * 1e18;
-        uint256 tokenValue = ((initialPrice**2) +
-            (2 * (priceIncrement * 1e18) * (afterFee * 1e18)) +
-            (((priceIncrement)**2) * (supply**2)) +
-            (2 * (priceIncrement) * initialPrice * supply));
+        uint256 tokenValue = ((2 *
+            (priceIncrement * 1e18) *
+            (newReserve * 1e18)) + (initialPrice**2));
         tokenValue = tokenValue.sqrt();
         tokenValue = tokenValue.sub(initialPrice);
         tokenValue /= priceIncrement;
         tokenValue -= supply;
-
         if (
             marketStatus == MarketStatus.Trading ||
             marketStatus == MarketStatus.BeforeTrading
