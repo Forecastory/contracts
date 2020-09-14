@@ -469,10 +469,10 @@ contract LinerV1 is ERC1155, IMarket {
         uint256 newReserve = reserve + afterFee;
         uint256 initialPrice = startPrice * 1e18;
         uint256 tokenValue = ((2 *
-            (priceIncrement * 1e18) *
-            (newReserve * 1e18)) + (initialPrice**2));
+            (priceIncrement.mul(1e18)).mul(newReserve.mul(1e18))) +
+            (initialPrice**2));
         tokenValue = tokenValue.sqrt();
-        tokenValue = tokenValue.sub(initialPrice);
+        tokenValue -= initialPrice;
         tokenValue /= priceIncrement;
         tokenValue -= supply;
         if (
