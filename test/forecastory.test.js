@@ -28,7 +28,7 @@ contract("Forecastory", (accounts) => {
   let start;
   let end;
 
-  const [creator, bob, alice, eve, mock, mock2] = accounts;
+  const [creator, bob, alice, eve, tom, mock, mock2] = accounts;
   const minter = creator;
 
   const settings = `{
@@ -301,6 +301,23 @@ contract("Forecastory", (accounts) => {
           );
         });
       });
+      context("Attempt buying by a zero-balance account", function () {
+        it("reverts", async function () {
+          await token.approve(market1.address, (1e19).toString(), {
+            from: bob,
+          });
+          await expectRevert(
+            market1.buy(
+              [(1e19).toString(), 1, 0, 0],
+              [bob, bob, ZERO_ADDRESS],
+              {
+                from: eve,
+              }
+            ),
+            "SafeMath: subtraction overflow"
+          );
+        });
+      });
     });
 
     describe("Calculate sell return", function () {
@@ -430,10 +447,27 @@ contract("Forecastory", (accounts) => {
           ).to.be.bignumber.closeTo("9500000", "1000");
         });
       });
+      context("calculate sell more than balance", function () {
+        let buy = new BN("20000000");
+        let sell = new BN("100000000000000000000");
+        it("reverts", async function () {
+          await token.approve(market5.address, buy, {
+            from: bob,
+          });
+          await market5.buy([buy, 1, 0, 0], [bob, bob, ZERO_ADDRESS], {
+            from: bob,
+          });
+          await expectRevert(
+            market5.calcSellAmount(sell, 0, { from: bob }),
+            "BEYOND_SUPPLY"
+          );
+        });
+      });
     });
 
     describe("Sell", function () {
       let sell = new BN("9087121146357144115");
+      let fiction = new BN("10000000000000000000");
       context("test case for market 1", function () {
         it("returns the proper amount of the collateral", async function () {
           await token.approve(market1.address, (1e19).toString(), {
@@ -446,7 +480,6 @@ contract("Forecastory", (accounts) => {
               from: bob,
             }
           );
-          await market1.setApprovalForAll(market1.address, { from: bob });
           await market1.sell([sell, 1, 0], [bob, bob], { from: bob });
           expect(await market1.balanceOf(bob, 0)).to.be.bignumber.equal("0");
           expect(await token.balanceOf(bob)).to.be.bignumber.equal(
@@ -454,6 +487,42 @@ contract("Forecastory", (accounts) => {
           );
           expect(await market1.getStake(0)).to.be.bignumber.equal("0");
           expect(await market1.getSupply(0)).to.be.bignumber.equal("0");
+        });
+      });
+      context("attempt sell by an other person", function () {
+        it("reverts", async function () {
+          await token.approve(market1.address, (1e19).toString(), {
+            from: bob,
+          });
+          await market1.buy(
+            [(1e19).toString(), 1, 0, 0],
+            [bob, bob, ZERO_ADDRESS],
+            {
+              from: bob,
+            }
+          );
+          await expectRevert(
+            market1.sell([sell, 1, 0], [bob, alice], { from: alice }),
+            "NOT_ELIGIBLE_TO_SELL"
+          );
+        });
+      });
+      context("attempt sell more than the balance", function () {
+        it("reverts", async function () {
+          await token.approve(market1.address, (1e19).toString(), {
+            from: bob,
+          });
+          await market1.buy(
+            [(1e19).toString(), 1, 0, 0],
+            [bob, bob, ZERO_ADDRESS],
+            {
+              from: bob,
+            }
+          );
+          await expectRevert(
+            market1.sell([fiction, 1, 0], [bob, bob], { from: bob }),
+            "INSUFFICIENT_AMOUNT"
+          );
         });
       });
     });
@@ -476,6 +545,22 @@ contract("Forecastory", (accounts) => {
             "500000000000000000"
           );
           expect(await market1.collectedFees(eve)).to.be.bignumber.equal("0");
+        });
+      });
+      context("Attempt by a non-stakeholder", function () {
+        it("allows withdrawal, and return nothing", async function () {
+          await token.approve(market1.address, (1e19).toString(), {
+            from: bob,
+          });
+          await market1.buy(
+            [(1e19).toString(), 1, 0, 0],
+            [bob, bob, ZERO_ADDRESS],
+            {
+              from: bob,
+            }
+          );
+          await market1.withdrawFees({ from: tom });
+          expect(await token.balanceOf(tom)).to.be.bignumber.equal("0");
         });
       });
     });

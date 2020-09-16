@@ -300,6 +300,15 @@ contract LinerV1 is ERC1155, IMarket {
         marketStatusTransitions
         atMarketStatus(MarketStatus.Trading)
     {
+        require(
+            balanceOf(_addresses[0], _params[2]) >= _params[0],
+            "INSUFFICIENT_AMOUNT"
+        );
+        require(
+            msg.sender == _addresses[0] ||
+                _operatorApprovals[_addresses[0]][msg.sender],
+            "NOT_ELIGIBLE_TO_SELL"
+        );
         uint256 returnValue = calcSellAmount(_params[0], _params[2]);
         require(returnValue >= _params[1], "PRICE_SLIPPAGE");
         _burn(_addresses[0], _params[2], _params[0]);
@@ -494,21 +503,16 @@ contract LinerV1 is ERC1155, IMarket {
         returns (uint256)
     {
         require(sellOption == 0, "SELL_OPTION_IS_DISABLED");
-
         if (marketStatus == MarketStatus.Trading) {
             uint256 supply = outcome[outcomeIndex].supply;
             uint256 reserve = outcome[outcomeIndex].reserve;
-
             require(supply >= sellAmount, "BEYOND_SUPPLY");
-
             if (supply == 0) {
                 return 0;
             }
-
             /**
              * Calculate the token return for this reserve token sale.
              */
-
             uint256 supplyAfter = supply.sub(sellAmount);
             if (supplyAfter == 0) {
                 return reserve;
@@ -520,7 +524,6 @@ contract LinerV1 is ERC1155, IMarket {
                     .bigDiv2x1(price.add(startPrice), supplyAfter, 1e18)
                     .div(2);
                 uint256 retVal = reserve - reserveAfter;
-
                 return retVal;
             }
         } else {
