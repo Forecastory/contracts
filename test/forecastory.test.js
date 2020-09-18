@@ -540,7 +540,7 @@ contract("Forecastory", (accounts) => {
               from: bob,
             }
           );
-          await market1.withdrawFees({ from: eve });
+          await market1.withdrawFees(eve, { from: eve });
           expect(await token.balanceOf(eve)).to.be.bignumber.equal(
             "500000000000000000"
           );
@@ -559,8 +559,12 @@ contract("Forecastory", (accounts) => {
               from: bob,
             }
           );
-          await market1.withdrawFees({ from: tom });
+          await market1.withdrawFees(eve, { from: tom });
           expect(await token.balanceOf(tom)).to.be.bignumber.equal("0");
+          expect(await token.balanceOf(eve)).to.be.bignumber.equal(
+            "500000000000000000"
+          );
+          expect(await market1.collectedFees(eve)).to.be.bignumber.equal("0");
         });
       });
     });
@@ -623,7 +627,7 @@ contract("Forecastory", (accounts) => {
           );
           await time.increase(time.duration.days(31));
           await market1.settle([0, 100000], { from: mock });
-          await market1.claim({ from: alice });
+          await market1.claim(alice, { from: alice });
           expect(await token.balanceOf(alice)).to.be.bignumber.equal(
             "109000000000000000000"
           );
@@ -644,7 +648,7 @@ contract("Forecastory", (accounts) => {
           );
           await time.increase(time.duration.days(31));
           await market1.settle([0, 100000], { from: mock });
-          await market1.claim({ from: bob });
+          await market1.claim(bob, { from: bob });
           expect(await token.balanceOf(bob)).to.be.bignumber.equal(
             "99500000000000000000"
           );
@@ -665,8 +669,11 @@ contract("Forecastory", (accounts) => {
           );
           await time.increase(time.duration.days(31));
           await market1.settle([0, 100000], { from: mock });
-          await market1.claim({ from: eve });
+          await market1.claim(bob, { from: eve });
           expect(await token.balanceOf(eve)).to.be.bignumber.equal("0");
+          expect(await token.balanceOf(bob)).to.be.bignumber.equal(
+            "99500000000000000000"
+          );
         });
       });
     });

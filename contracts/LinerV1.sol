@@ -402,10 +402,10 @@ contract LinerV1 is ERC1155, IMarket {
     /**
      * @dev Winnig token holders can claim redemption through this function
      */
-    function claim() public atMarketStatus(MarketStatus.Finalized) {
+    function claim(address account) public atMarketStatus(MarketStatus.Finalized) {
         uint256 redemption;
         for (uint256 i = 0; i < outcomeNumbers; i++) {
-            uint256 balance = balanceOf(msg.sender, i);
+            uint256 balance = balanceOf(account, i);
             if (balance > 0) {
                 if (outcome[i].dividend > 0) {
                     uint256 value = BigDiv.bigDiv2x1(
@@ -413,27 +413,27 @@ contract LinerV1 is ERC1155, IMarket {
                         balance,
                         outcome[i].supply
                     );
-                    _burn(msg.sender, i, balance);
+                    _burn(account, i, balance);
                     outcome[i].supply = outcome[i].supply.sub(balance);
                     outcome[i].dividend = outcome[i].dividend.sub(value);
                     redemption = redemption.add(value);
-                    emit Claimed(msg.sender, i, balance, value);
+                    emit Claimed(account, i, balance, value);
                 }
             }
         }
         if (redemption > 0) {
-            IERC20(token).transfer(msg.sender, redemption);
+            IERC20(token).transfer(account, redemption);
         }
     }
 
     /**
      * @dev Beneficiaries can withdraw fees through this function.
      */
-    function withdrawFees() public {
-        uint256 amount = collectedFees[msg.sender];
-        collectedFees[msg.sender] = 0;
-        emit FeeWithdrawal(msg.sender, amount);
-        IERC20(token).transfer(msg.sender, amount);
+    function withdrawFees(address account) public {
+        uint256 amount = collectedFees[account];
+        collectedFees[account] = 0;
+        emit FeeWithdrawal(account, amount);
+        IERC20(token).transfer(account, amount);
     }
 
     /**
