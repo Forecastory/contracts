@@ -168,7 +168,7 @@ contract LinerV1 is ERC1155, IMarket {
         uint256[] memory _shares
     ) public override view returns (bool) {
         require(bytes(_settings).length > 10);
-        require(_outcomeNum >= 2);
+        require(_outcomeNum >= 2 && _outcomeNum <= 10);
         require(
             _conditions[1].sub(_conditions[0]) > 1 days &&
                 _conditions[1].sub(now) > 1 days &&
@@ -177,6 +177,7 @@ contract LinerV1 is ERC1155, IMarket {
         require(_conditions[3] > 0);
         require(_conditions[4] < 2);
         require(_references[0] != address(0) && _references[1] != address(0));
+        require(_beneficiaries.length <= 3);
         require(_beneficiaries.length == _shares.length);
 
         uint256 share;
@@ -402,7 +403,10 @@ contract LinerV1 is ERC1155, IMarket {
     /**
      * @dev Winnig token holders can claim redemption through this function
      */
-    function claim(address account) public atMarketStatus(MarketStatus.Finalized) {
+    function claim(address account)
+        public
+        atMarketStatus(MarketStatus.Finalized)
+    {
         uint256 redemption;
         for (uint256 i = 0; i < outcomeNumbers; i++) {
             uint256 balance = balanceOf(account, i);
