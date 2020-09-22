@@ -4,8 +4,8 @@ pragma experimental ABIEncoderV2;
 import "../Libraries/tokens/ERC20.sol";
 
 contract Faucet is ERC20 {
-    string public name = DAI;
-    string public symbol = DAI;
+    string public name = "DAI";
+    string public symbol = "DAI";
     uint8 public decimals = 18;
 
     constructor() public {}
