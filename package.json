@@ -17,7 +17,8 @@
     "ganache-cli": "^6.10.1",
     "mocha": "^8.1.1",
     "truffle": "^5.1.37",
-    "truffle-contract-size": "^2.0.0"
+    "truffle-contract-size": "^2.0.0",
+    "truffle-security": "^1.7.3"
   },
   "scripts": {
     "test": "mocha"

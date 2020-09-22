@@ -94,7 +94,7 @@ module.exports = {
   mocha: {
     // timeout: 100000
   },
-  plugins: ["truffle-contract-size"],
+  plugins: ["truffle-contract-size", "truffle-security"],
   // Configure your compilers
   compilers: {
     solc: {
