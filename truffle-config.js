@@ -23,6 +23,10 @@
 //
 // const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
+const HDWalletProvider = require("@truffle/hdwallet-provider");
+const fs = require("fs");
+const mnemonic = fs.readFileSync(".mnemonic").toString().trim();
+const infuraKey = fs.readFileSync(".infuraKey").toString().trim();
 
 module.exports = {
   /**
@@ -42,12 +46,24 @@ module.exports = {
     // tab if you use this network and you must also set the `host`, `port` and `network_id`
     // options below to some value.
     //
+    /*
     development: {
       host: "127.0.0.1", // Localhost (default: none)
       port: 8545, // Standard Ethereum port (default: none)
       network_id: "*", // Any network (default: none)
       //gas: 10000000000, // Gas sent with each transaction (default: ~6700000)
-      //gasPrice: 20000000000, // 20 gwei (in wei) (default: 100 gwei)
+      gasPrice: 200000000000, // 20 gwei (in wei) (default: 100 gwei)
+    },
+    */
+    rinkeby: {
+      provider: () =>
+        new HDWalletProvider(
+          mnemonic,
+          `https://rinkeby.infura.io/v3/${infuraKey}`
+        ),
+      network_id: 4,
+      gas: 6700000,
+      gasPrice: 20000000000,
     },
     // Another network with more advanced options...
     // advanced: {
@@ -80,7 +96,7 @@ module.exports = {
   mocha: {
     // timeout: 100000
   },
-  plugins: ["truffle-contract-size"],
+  plugins: ["truffle-contract-size", "truffle-security"],
   // Configure your compilers
   compilers: {
     solc: {
@@ -89,7 +105,7 @@ module.exports = {
       // settings: {          // See the solidity docs for advice about optimization and evmVersion
       optimizer: {
         enabled: true,
-        runs: 200,
+        runs: 2000,
       },
       //  evmVersion: "byzantium"
       // }
