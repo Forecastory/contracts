@@ -43,9 +43,10 @@ contract Core is Ownable {
     address[] public markets;
     mapping(address => uint256) public marketIndex;
 
-    mapping(address => bool) templates;
-    mapping(address => mapping(uint256 => mapping(address => bool))) reflist;
-    mapping(address => uint256) fees;
+    mapping(address => bool) public templates;
+    mapping(address => mapping(uint256 => mapping(address => bool)))
+        public reflist;
+    mapping(address => uint256) public fees;
     mapping(address => bool) private tokens;
 
     constructor() public {}

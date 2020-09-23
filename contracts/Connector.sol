@@ -16,11 +16,11 @@ contract Connector {
     using SafeMath for uint256;
     using Address for address;
 
-    address factory;
-    address reality;
-    address arbitrator;
+    address public factory;
+    address public reality;
+    address public arbitrator;
 
-    mapping(address => bytes32) questionId;
+    mapping(address => bytes32) public questionId;
 
     constructor(
         address _factory,
