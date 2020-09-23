@@ -1,21 +1,15 @@
 # Forecastory
 
-### Rinkeby
+For more details about the project, information is available at [forecastory.com](https://www.forecastory.com/).
 
-#### old
+## Install Dependencies
 
-- Template
-  0xE8157131a27A43865fE6b1Ece762d14faC26dC37
-- Core
-  0xF39D654E1359565ef7EA14e882d037a2b5681ED4
-- Connector
-  0x0B2F3f41A4f2340E04c4606E3Cb423730A2E33A1
+`yarn`
 
-#### new
+## Compile Contracts
 
-- Template
-  0x0d061fac52C6631bDf8528F1a39280F11aB3BD37
-- Core
-  0x09a0B5E13Ed55e479E7b16C149372E5887Fa22C5
-- Connector
-  0x637A558aEf54D81e035BaDf64fe9F5e936084FE2
+`yarn compile`
+
+## Run Tests
+
+`yarn test`
