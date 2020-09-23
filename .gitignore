@@ -6,3 +6,4 @@ migrations/2_deploy_contracts.js
 .mnemonic
 .soliumignore
 .soliumrc.json
+.DS_Store
